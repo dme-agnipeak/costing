@@ -1,0 +1,108 @@
+import { useState, useEffect } from 'react'
+import Field from './Field'
+import { computeProduct, currency, num2 } from '../lib/calculations'
+import { Save, X } from 'lucide-react'
+
+export function blankProduct() {
+  return {
+    id: crypto.randomUUID(),
+    date: new Date().toISOString().slice(0, 10),
+    name: '',
+    ratePerKg: '',
+    rawQtyKg: '',
+    gstPercent: 18,
+    bodyWeightGram: '',
+    wastagePercent: 0,
+    machinesRun: '',
+    runHoursPerMachine: '',
+    actualGoodBodies: '',
+    sellingPrice: '',
+  }
+}
+
+export default function ProductForm({ initial, fixedCostPerMachineHour, onSave, onCancel }) {
+  const [product, setProduct] = useState(initial || blankProduct())
+
+  useEffect(() => {
+    setProduct(initial || blankProduct())
+  }, [initial])
+
+  const update = (key, val) => setProduct((p) => ({ ...p, [key]: val }))
+  const c = computeProduct(product, fixedCostPerMachineHour)
+
+  return (
+    <div className="bg-navy-800/60 border border-gold-500/30 rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-slate-100 font-semibold">{initial ? 'Edit Product' : 'Add New Product / Body'}</h3>
+        {onCancel && (
+          <button onClick={onCancel} className="text-slate-500 hover:text-slate-200">
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <label className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
+          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Product / Body Name</span>
+          <input
+            type="text"
+            value={product.name}
+            onChange={(e) => update('name', e.target.value)}
+            placeholder="e.g. 63mm Body"
+            className="w-full rounded-lg bg-navy-800/70 border border-slate-700 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 text-slate-100 text-sm px-3 py-2.5 outline-none"
+          />
+        </label>
+        <Field label="Date" type="date" value={product.date} onChange={(v) => update('date', v)} />
+        <Field label="Rate per KG" suffix="₹" value={product.ratePerKg} onChange={(v) => update('ratePerKg', v)} />
+        <Field label="Raw Qty" suffix="KG" value={product.rawQtyKg} onChange={(v) => update('rawQtyKg', v)} />
+        <Field label="Body Weight" suffix="gram" value={product.bodyWeightGram} onChange={(v) => update('bodyWeightGram', v)} />
+        <Field label="GST %" suffix="%" value={product.gstPercent} onChange={(v) => update('gstPercent', v)} />
+        <Field label="Wastage %" suffix="%" value={product.wastagePercent} onChange={(v) => update('wastagePercent', v)} />
+        <Field label="Machines Run" value={product.machinesRun} onChange={(v) => update('machinesRun', v)} />
+        <Field label="Run Hours / Machine" suffix="hrs" value={product.runHoursPerMachine} onChange={(v) => update('runHoursPerMachine', v)} />
+        <Field
+          label="Actual Good Bodies"
+          value={product.actualGoodBodies}
+          placeholder={num2(c.theoreticalBodies, 0)}
+          onChange={(v) => update('actualGoodBodies', v)}
+        />
+        <Field label="Selling Price / Body" suffix="₹" value={product.sellingPrice} onChange={(v) => update('sellingPrice', v)} />
+      </div>
+
+      {/* Live preview */}
+      <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MiniStat label="Material Total (incl GST)" value={currency(c.materialTotalInclGst)} />
+        <MiniStat label="Theoretical Bodies" value={num2(c.theoreticalBodies, 0)} />
+        <MiniStat label="Allocated Fixed Cost" value={currency(c.allocatedFixedCost)} />
+        <MiniStat label="FINAL COST / BODY" value={currency(c.finalCostPerBody)} highlight />
+      </div>
+
+      <div className="mt-5 flex gap-3">
+        <button
+          onClick={() => onSave(product)}
+          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-950 font-semibold text-sm px-4 py-2.5 rounded-lg transition"
+        >
+          <Save className="w-4 h-4" />
+          Save Product
+        </button>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="text-sm px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:text-slate-100 transition"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MiniStat({ label, value, highlight }) {
+  return (
+    <div className={`rounded-xl px-3 py-2.5 border ${highlight ? 'bg-gold-500/10 border-gold-500/40' : 'bg-navy-900 border-slate-700'}`}>
+      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={`text-sm font-semibold mt-0.5 ${highlight ? 'text-gold-400' : 'text-slate-100'}`}>{value}</div>
+    </div>
+  )
+}
