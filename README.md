@@ -5,8 +5,8 @@
 ## App kya karta hai
 
 - **Fixed Costs tab** — Electricity, Rent, Operator Salary, Labour, Misc, Other Fixed Cost — ek baar daalo, hamesha ke liye save ho jayega (browser me), jab chaho **Unlock** karke edit kar sakte ho.
-- **Machine Setup tab** — Working days, machines/day, hours/machine — isse "Fixed Cost per Machine Hour" auto-calculate hota hai.
-- **Products tab** — Har product/body ke liye Rate/KG, Raw Qty, Body Weight, GST%, Wastage%, Machine hours daalo — app automatically Material Cost, Fixed Cost allocation, aur **Final Cost per Body** nikal deta hai. Jitne chaho utne products add/edit/delete kar sakte ho.
+- **Machine Setup tab** — Number of Machines, Working Days — isse "Fixed Cost per Machine / Day" auto-calculate hota hai.
+- **Products tab** — Har product/body ke liye Body Weight, Rate/KG, Raw Qty, GST%, Avg Production, Selling Price daalo — app automatically Material Cost, Fixed Cost allocation, aur **Final Cost per Body** nikal deta hai — bilkul aapki Excel sheet ki formula chain jaisa. Jitne chaho utne products add/edit/delete kar sakte ho, har product ki apni Avg Production value ho sakti hai.
 - **Final Report tab** — Sab products ka summary + totals, aur **Download PDF Report** button — ek professional PDF report seedha phone/laptop me download ho jata hai.
 - **Installable App (PWA)** — Ye app "Add to Home Screen" se Android/iPhone/laptop me normal app jaisa install ho jata hai, apna icon milega, aur offline bhi chalega. (Play Store APK nahi hai — lekin use karne me bilkul native app jaisa hi lagega.)
 - Sara data aapke apne browser/phone me hi save hota hai (localStorage) — koi server database nahi hai.
@@ -69,39 +69,29 @@ src/
 public/             -> PWA icons, manifest assets
 ```
 
-## Costing formula (short summary)
+## Costing formula (exact match to your Google Sheet)
 
 ```
 Total Fixed Cost      = Electricity + Rent + Operator Salary + Labour + Misc + Other
-Planned Machine Hours = Working Days x Avg Machines/Day x Avg Hours/Machine
-Fixed Cost / Hour     = Total Fixed Cost / Planned Machine Hours
+Machine-Wise Fixed    = Total Fixed Cost / No. of Machines
+Per-Day (per machine) = Machine-Wise Fixed / Working Days
+Fixed Cost / Unit     = Per-Day (per machine) / Avg Production (units/machine/day)
 
-Material Amount       = Rate/KG x Raw Qty (KG)
-GST Amount            = Material Amount x GST%
-Material Total        = Material Amount + GST Amount
+Rate / Gram        = Rate per KG / 1000
+Amount (Rs)        = Rate/Gram x Body Weight (gram)      -> material cost of ONE body
+GST Amount (Rs)    = Amount x GST%
+Material Total     = Amount + GST Amount
 
-Net Material (KG)     = Raw Qty x (1 - Wastage%)
-Theoretical Bodies    = Net Material (gram) / Body Weight (gram)
-(Actual Good Bodies field se override bhi kar sakte ho)
-
-Allocated Fixed Cost  = (Machines Run x Run Hours) x Fixed Cost/Hour
-Material Cost / Body  = Material Total / Good Bodies
-Fixed Cost / Body     = Allocated Fixed Cost / Good Bodies
-
-FINAL COST / BODY     = Material Cost/Body + Fixed Cost/Body
-Profit / Body         = Selling Price - Final Cost/Body
+COST TOTAL PRICE   = Fixed Cost/Unit + Material Total     <- FINAL COST PER BODY
+GST Price          = GST Amount + Fixed Cost/Unit
+Without GST Price  = Fixed Cost/Unit + Amount
+Final Profit       = Selling Price - Cost Total Price
 ```
 
-Agar aapki original Excel sheet ki koi specific formula isse thodi alag honi chahiye, batao — `src/lib/calculations.js` file me sirf ek jagah edit karke poori app update ho jayegi.
+No. of Machines, Working Days, aur Avg Production — teeno **Machine Setup tab** me editable hain (pehle sheet me ye 6 aur 26 hardcoded the, ab app me kabhi bhi change kar sakte ho).
+
+"Raw Qty (KG)" field sirf reference/record ke liye hai — jaisa original sheet me hai, ye final cost calculation me directly use nahi hota (Rate/Gram hamesha Rate-per-KG/1000 hi rehta hai).
 
 ## Manual Override (jab formula se hat kar khud number dena ho)
 
-Har product ke form me ek **yellow "Manual Override"** box hai — "Final Cost / Body". Khali chhodo to app automatic formula se calculate karega. Agar koi specific number khud dalna hai (jaise sheet me manually adjust karte the), to us box me type karo — app us value ko use karega aur "manual" tag dikhayega table me.
-
-## Original Excel sheet me mili gadbad (fix kar di gayi hai app me)
-
-Aapki bheji hui sheet check ki — usme 2 issues the:
-1. Pehle "Amount (₹)" column (I15) ki formula `Rate/Gram × Body Weight` thi, jo galti se bahut chhota number de rahi thi (₹0.72 for 1kg raw material @ ₹165/kg) — ye batch ka total material cost nahi, balki kisi aur cheez ka calculation tha.
-2. "Fixed Cost / Machine Hour" (R column) ki formula me `#REF!` error tha — broken reference.
-
-Is app me maine sheet ke **doosre, zyada complete section** (jisme Machine Hours, Wastage%, aur Theoretical/Actual Bodies included hain) ki logic use ki hai — jo sahi aur consistent hai: total batch material cost ÷ bodies produced = material cost per body. Isliye app ke numbers upar wali buggy Excel formula se match nahi karenge, lekin actual sahi costing yahi hai.
+Har product ke form me ek **yellow "Manual Override — Final Cost / Body"** box hai. Khali chhodo to app automatic formula se calculate karega (upar wale formula se). Agar koi specific number khud dalna hai, to us box me type karo — app us value ko use karega aur "manual" tag dikhayega table me. Isse kisi bhi product ki final calculation ko chaho to override kar sakte ho.

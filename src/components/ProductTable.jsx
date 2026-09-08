@@ -1,7 +1,7 @@
 import { computeProduct, currency, num2 } from '../lib/calculations'
 import { Pencil, Trash2 } from 'lucide-react'
 
-export default function ProductTable({ products, fixedCostPerMachineHour, onEdit, onDelete }) {
+export default function ProductTable({ products, fixedCostPerMachinePerDay, onEdit, onDelete }) {
   if (!products.length) {
     return (
       <div className="text-center py-10 text-slate-500 text-sm border border-dashed border-slate-800 rounded-2xl">
@@ -16,11 +16,10 @@ export default function ProductTable({ products, fixedCostPerMachineHour, onEdit
         <thead>
           <tr className="bg-navy-900 text-slate-400 text-xs uppercase tracking-wide">
             <th className="text-left px-3 py-3">Product</th>
+            <th className="text-right px-3 py-3">Body Wt (g)</th>
             <th className="text-right px-3 py-3">Rate/KG</th>
-            <th className="text-right px-3 py-3">Raw Qty</th>
             <th className="text-right px-3 py-3">Material Total</th>
-            <th className="text-right px-3 py-3">Good Bodies</th>
-            <th className="text-right px-3 py-3">Material/Body</th>
+            <th className="text-right px-3 py-3">Avg Production</th>
             <th className="text-right px-3 py-3">Fixed/Body</th>
             <th className="text-right px-3 py-3 text-gold-400">Final Cost/Body</th>
             <th className="text-right px-3 py-3">Profit/Body</th>
@@ -29,15 +28,14 @@ export default function ProductTable({ products, fixedCostPerMachineHour, onEdit
         </thead>
         <tbody className="divide-y divide-slate-800">
           {products.map((p) => {
-            const c = computeProduct(p, fixedCostPerMachineHour)
+            const c = computeProduct(p, fixedCostPerMachinePerDay)
             return (
               <tr key={p.id} className="hover:bg-navy-800/40 transition">
                 <td className="px-3 py-3 text-slate-200 font-medium">{p.name || '—'}</td>
+                <td className="px-3 py-3 text-right text-slate-400">{num2(p.bodyWeightGram, 1)}</td>
                 <td className="px-3 py-3 text-right text-slate-400">₹{num2(p.ratePerKg)}</td>
-                <td className="px-3 py-3 text-right text-slate-400">{num2(p.rawQtyKg)} kg</td>
                 <td className="px-3 py-3 text-right text-slate-300">{currency(c.materialTotalInclGst)}</td>
-                <td className="px-3 py-3 text-right text-slate-300">{num2(c.bodiesForCosting, 0)}</td>
-                <td className="px-3 py-3 text-right text-slate-300">{currency(c.materialCostPerBody)}</td>
+                <td className="px-3 py-3 text-right text-slate-300">{num2(p.avgProduction, 0)}</td>
                 <td className="px-3 py-3 text-right text-slate-300">{currency(c.fixedCostPerBody)}</td>
                 <td className="px-3 py-3 text-right font-bold text-gold-400">
                   {currency(c.finalCostPerBody)}

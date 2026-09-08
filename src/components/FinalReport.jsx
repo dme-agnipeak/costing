@@ -1,22 +1,22 @@
-import { computeProduct, computeTotalFixedCost, computePlannedMachineHours, currency, num2 } from '../lib/calculations'
+import { computeProduct, computeTotalFixedCost, computeFixedCostPerMachine, computeFixedCostPerMachinePerDay, currency, num2 } from '../lib/calculations'
 import { exportFinalReportPdf } from '../lib/pdfExport'
 import { FileDown } from 'lucide-react'
 
-export default function FinalReport({ companyInfo, fixedCosts, machineCapacity, products, fixedCostPerMachineHour }) {
+export default function FinalReport({ companyInfo, fixedCosts, machineCapacity, products, fixedCostPerMachinePerDay }) {
   const totalFixed = computeTotalFixedCost(fixedCosts)
-  const plannedHours = computePlannedMachineHours(machineCapacity)
+  const perMachine = computeFixedCostPerMachine(fixedCosts, machineCapacity)
 
   const totals = products.reduce(
     (acc, p) => {
-      const c = computeProduct(p, fixedCostPerMachineHour)
+      const c = computeProduct(p, fixedCostPerMachinePerDay)
       acc.material += c.materialTotalInclGst
-      acc.allocatedFixed += c.allocatedFixedCost
-      acc.bodies += c.bodiesForCosting
-      if (p.sellingPrice) acc.revenue += Number(p.sellingPrice) * c.bodiesForCosting
-      acc.cost += c.finalCostPerBody * c.bodiesForCosting
+      if (p.sellingPrice && p.avgProduction) {
+        acc.revenue += Number(p.sellingPrice) * Number(p.avgProduction)
+        acc.cost += c.finalCostPerBody * Number(p.avgProduction)
+      }
       return acc
     },
-    { material: 0, allocatedFixed: 0, bodies: 0, revenue: 0, cost: 0 }
+    { material: 0, revenue: 0, cost: 0 }
   )
   const totalProfit = totals.revenue - totals.cost
 
@@ -39,9 +39,9 @@ export default function FinalReport({ companyInfo, fixedCosts, machineCapacity, 
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat label="Total Monthly Fixed Cost" value={currency(totalFixed)} />
-        <Stat label="Planned Machine Hours" value={num2(plannedHours, 0)} />
-        <Stat label="Total Good Bodies (all products)" value={num2(totals.bodies, 0)} />
-        <Stat label="Total Est. Profit" value={currency(totalProfit)} highlight={totalProfit >= 0} negative={totalProfit < 0} />
+        <Stat label="Fixed Cost / Machine (Monthly)" value={currency(perMachine)} />
+        <Stat label="Products Costed" value={num2(products.length, 0)} />
+        <Stat label="Est. Monthly Profit" value={currency(totalProfit)} highlight={totalProfit >= 0} negative={totalProfit < 0} />
       </div>
 
       {!products.length ? (
@@ -50,16 +50,16 @@ export default function FinalReport({ companyInfo, fixedCosts, machineCapacity, 
         </div>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-slate-800">
-          <table className="w-full text-sm min-w-[1000px]">
+          <table className="w-full text-sm min-w-[1100px]">
             <thead>
               <tr className="bg-navy-900 text-slate-400 text-xs uppercase tracking-wide">
                 <th className="text-left px-3 py-3">Product</th>
                 <th className="text-right px-3 py-3">Body Wt(g)</th>
                 <th className="text-right px-3 py-3">Material Total</th>
-                <th className="text-right px-3 py-3">Good Bodies</th>
-                <th className="text-right px-3 py-3">Material/Body</th>
                 <th className="text-right px-3 py-3">Fixed/Body</th>
                 <th className="text-right px-3 py-3 text-gold-400">Final Cost/Body</th>
+                <th className="text-right px-3 py-3">GST Price</th>
+                <th className="text-right px-3 py-3">Without GST Price</th>
                 <th className="text-right px-3 py-3">Selling Price</th>
                 <th className="text-right px-3 py-3">Profit/Body</th>
                 <th className="text-right px-3 py-3">Margin %</th>
@@ -67,16 +67,16 @@ export default function FinalReport({ companyInfo, fixedCosts, machineCapacity, 
             </thead>
             <tbody className="divide-y divide-slate-800">
               {products.map((p) => {
-                const c = computeProduct(p, fixedCostPerMachineHour)
+                const c = computeProduct(p, fixedCostPerMachinePerDay)
                 return (
                   <tr key={p.id} className="hover:bg-navy-800/40 transition">
                     <td className="px-3 py-3 text-slate-200 font-medium">{p.name || '—'}</td>
                     <td className="px-3 py-3 text-right text-slate-400">{num2(p.bodyWeightGram, 1)}</td>
                     <td className="px-3 py-3 text-right text-slate-300">{currency(c.materialTotalInclGst)}</td>
-                    <td className="px-3 py-3 text-right text-slate-300">{num2(c.bodiesForCosting, 0)}</td>
-                    <td className="px-3 py-3 text-right text-slate-300">{currency(c.materialCostPerBody)}</td>
                     <td className="px-3 py-3 text-right text-slate-300">{currency(c.fixedCostPerBody)}</td>
                     <td className="px-3 py-3 text-right font-bold text-gold-400">{currency(c.finalCostPerBody)}</td>
+                    <td className="px-3 py-3 text-right text-slate-400">{currency(c.gstPriceDisplay)}</td>
+                    <td className="px-3 py-3 text-right text-slate-400">{currency(c.withoutGstPrice)}</td>
                     <td className="px-3 py-3 text-right text-slate-300">{p.sellingPrice ? currency(p.sellingPrice) : '—'}</td>
                     <td className={`px-3 py-3 text-right font-medium ${c.profitPerBody >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {p.sellingPrice ? currency(c.profitPerBody) : '—'}

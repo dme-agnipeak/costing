@@ -1,7 +1,7 @@
 const KEYS = {
   fixedCosts: 'agnipeak_fixed_costs_v1',
-  machineCapacity: 'agnipeak_machine_capacity_v1',
-  products: 'agnipeak_products_v1',
+  machineCapacity: 'agnipeak_machine_capacity_v2',
+  products: 'agnipeak_products_v2',
   companyInfo: 'agnipeak_company_info_v1',
 }
 
@@ -15,9 +15,8 @@ export const DEFAULT_FIXED_COSTS = {
 }
 
 export const DEFAULT_MACHINE_CAPACITY = {
+  numberOfMachines: 6,
   workingDays: 26,
-  avgMachinesPerDay: 22,
-  avgHoursPerMachine: 23,
 }
 
 export const DEFAULT_COMPANY_INFO = {
@@ -44,10 +43,10 @@ function save(key, value) {
 }
 
 export const storage = {
-  getFixedCosts: () => load(KEYS.fixedCosts, DEFAULT_FIXED_COSTS),
+  getFixedCosts: () => ({ ...DEFAULT_FIXED_COSTS, ...load(KEYS.fixedCosts, {}) }),
   setFixedCosts: (v) => save(KEYS.fixedCosts, v),
 
-  getMachineCapacity: () => load(KEYS.machineCapacity, DEFAULT_MACHINE_CAPACITY),
+  getMachineCapacity: () => ({ ...DEFAULT_MACHINE_CAPACITY, ...load(KEYS.machineCapacity, {}) }),
   setMachineCapacity: (v) => save(KEYS.machineCapacity, v),
 
   getProducts: () => load(KEYS.products, []),

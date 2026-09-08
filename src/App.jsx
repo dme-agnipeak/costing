@@ -7,7 +7,7 @@ import ProductForm, { blankProduct } from './components/ProductForm'
 import ProductTable from './components/ProductTable'
 import FinalReport from './components/FinalReport'
 import { storage } from './lib/storage'
-import { computeFixedCostPerMachineHour } from './lib/calculations'
+import { computeFixedCostPerMachinePerDay } from './lib/calculations'
 import { Settings2, Gauge, Package, FileBarChart, Plus } from 'lucide-react'
 
 const TABS = [
@@ -30,7 +30,7 @@ export default function App() {
   useEffect(() => storage.setMachineCapacity(machineCapacity), [machineCapacity])
   useEffect(() => storage.setProducts(products), [products])
 
-  const fcph = computeFixedCostPerMachineHour(fixedCosts, machineCapacity)
+  const fixedCostPerMachinePerDay = computeFixedCostPerMachinePerDay(fixedCosts, machineCapacity)
 
   const saveProduct = (product) => {
     setProductsState((prev) => {
@@ -88,7 +88,7 @@ export default function App() {
             {showForm && (
               <ProductForm
                 initial={editingProduct}
-                fixedCostPerMachineHour={fcph}
+                fixedCostPerMachinePerDay={fixedCostPerMachinePerDay}
                 onSave={saveProduct}
                 onCancel={() => {
                   setShowForm(false)
@@ -99,7 +99,7 @@ export default function App() {
 
             <ProductTable
               products={products}
-              fixedCostPerMachineHour={fcph}
+              fixedCostPerMachinePerDay={fixedCostPerMachinePerDay}
               onEdit={(p) => {
                 setEditingProduct(p)
                 setShowForm(true)
@@ -115,7 +115,7 @@ export default function App() {
             fixedCosts={fixedCosts}
             machineCapacity={machineCapacity}
             products={products}
-            fixedCostPerMachineHour={fcph}
+            fixedCostPerMachinePerDay={fixedCostPerMachinePerDay}
           />
         )}
       </main>

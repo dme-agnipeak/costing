@@ -1,90 +1,103 @@
-// Core costing engine — mirrors the logic of the AgniPeak Excel costing sheet.
-
-export function computeTotalFixedCost(fixedCosts) {
-  const { electricity = 0, rent = 0, operatorSalary = 0, labour = 0, misc = 0, otherFixed = 0 } = fixedCosts
-  return num(electricity) + num(rent) + num(operatorSalary) + num(labour) + num(misc) + num(otherFixed)
-}
-
-export function computePlannedMachineHours(machineCapacity) {
-  const { workingDays = 0, avgMachinesPerDay = 0, avgHoursPerMachine = 0 } = machineCapacity
-  return num(workingDays) * num(avgMachinesPerDay) * num(avgHoursPerMachine)
-}
-
-export function computeFixedCostPerMachineHour(fixedCosts, machineCapacity) {
-  const total = computeTotalFixedCost(fixedCosts)
-  const hours = computePlannedMachineHours(machineCapacity)
-  if (!hours) return 0
-  return total / hours
-}
+// Core costing engine — mirrors the EXACT logic of the AgniPeak Excel costing sheet,
+// cell-by-cell, as confirmed against the original sheet:
+//
+//   FIXED COST SETUP:
+//     B11 = SUM(B5:B10)                    -> Total Monthly Fixed Cost
+//     D   = B / Number of Machines          -> "Machine Wise" fixed cost
+//     D11 = SUM(D5:D10) = B11 / Machines
+//     H11 = D11 / Working Days              -> Fixed cost / machine / day
+//
+//   PER PRODUCT ROW:
+//     F = E * 1000                          -> Raw Qty (Gram)
+//     G = D / F * E  (= D / 1000)           -> Rate / Gram
+//     I = G * C                             -> Amount (₹)  = material cost of ONE body (Body Weight × Rate/Gram)
+//     J = I * GST%                          -> GST Amount
+//     K = I + J                             -> Material Total incl. GST (₹) = material cost/body incl GST
+//
+//   FINAL CALCULATIONS (per product, using its own Avg Production):
+//     J11 = H11 / Avg Production            -> Fixed Cost / Body
+//     K11 = J11 + K15                       -> Cost Total Price  = FINAL COST / BODY
+//     L11 = J15 + J11                       -> GST Price
+//     M11 = J11 + I15                       -> Without GST Price
+//     N11 = SellingPrice(L15) - K11         -> Final Profit
 
 function num(v) {
   const n = typeof v === 'number' ? v : parseFloat(v)
   return isNaN(n) ? 0 : n
 }
 
-// Computes every derived field for a single product row.
-export function computeProduct(product, fixedCostPerMachineHour) {
+export function computeTotalFixedCost(fixedCosts) {
+  const { electricity = 0, rent = 0, operatorSalary = 0, labour = 0, misc = 0, otherFixed = 0 } = fixedCosts
+  return num(electricity) + num(rent) + num(operatorSalary) + num(labour) + num(misc) + num(otherFixed)
+}
+
+// "Machine Wise" — total fixed cost divided across the number of machines
+export function computeFixedCostPerMachine(fixedCosts, machineSetup) {
+  const total = computeTotalFixedCost(fixedCosts)
+  const machines = num(machineSetup.numberOfMachines)
+  if (!machines) return 0
+  return total / machines
+}
+
+// Fixed cost per machine, per working day
+export function computeFixedCostPerMachinePerDay(fixedCosts, machineSetup) {
+  const perMachine = computeFixedCostPerMachine(fixedCosts, machineSetup)
+  const days = num(machineSetup.workingDays)
+  if (!days) return 0
+  return perMachine / days
+}
+
+// Computes every derived field for a single product row — matches sheet columns exactly.
+export function computeProduct(product, fixedCostPerMachinePerDay) {
   const ratePerKg = num(product.ratePerKg)
   const rawQtyKg = num(product.rawQtyKg)
   const gstPercent = num(product.gstPercent)
   const bodyWeightGram = num(product.bodyWeightGram)
-  const wastagePercent = num(product.wastagePercent)
-  const machinesRun = num(product.machinesRun)
-  const runHoursPerMachine = num(product.runHoursPerMachine)
   const sellingPrice = num(product.sellingPrice)
+  const avgProduction = num(product.avgProduction)
 
   const rawQtyGram = rawQtyKg * 1000
-  const ratePerGram = rawQtyGram ? ratePerKg / 1000 : 0
+  // G = D / F * E  → algebraically simplifies to D/1000, computed literally for transparency
+  const ratePerGram = rawQtyGram > 0 ? (ratePerKg / rawQtyGram) * rawQtyKg : 0
 
-  const materialAmount = ratePerKg * rawQtyKg // before GST
-  const gstAmount = materialAmount * (gstPercent / 100)
-  const materialTotalInclGst = materialAmount + gstAmount
+  // I = G * C  -> material cost of ONE body (before GST)
+  const materialAmountPerBody = ratePerGram * bodyWeightGram
+  // J = I * GST%
+  const gstAmount = materialAmountPerBody * (gstPercent / 100)
+  // K = I + J -> material cost per body incl. GST
+  const materialTotalInclGst = materialAmountPerBody + gstAmount
 
-  const netMaterialKg = rawQtyKg * (1 - wastagePercent / 100)
-  const netMaterialGram = netMaterialKg * 1000
+  // J11 = H11 / Avg Production
+  const fixedCostPerBody = avgProduction > 0 ? fixedCostPerMachinePerDay / avgProduction : 0
 
-  const theoreticalBodies = bodyWeightGram > 0 ? netMaterialGram / bodyWeightGram : 0
-
-  const actualGoodBodies =
-    product.actualGoodBodies !== '' && product.actualGoodBodies !== null && product.actualGoodBodies !== undefined
-      ? num(product.actualGoodBodies)
-      : theoreticalBodies
-
-  const bodiesForCosting = actualGoodBodies > 0 ? actualGoodBodies : theoreticalBodies
-
-  const totalMachineHours = machinesRun * runHoursPerMachine
-  const allocatedFixedCost = totalMachineHours * fixedCostPerMachineHour
-
-  const materialCostPerBody = bodiesForCosting > 0 ? materialTotalInclGst / bodiesForCosting : 0
-  const fixedCostPerBody = bodiesForCosting > 0 ? allocatedFixedCost / bodiesForCosting : 0
-
-  const autoFinalCostPerBody = materialCostPerBody + fixedCostPerBody
+  // K11 = J11 + K15 -> auto FINAL COST / BODY
+  const autoFinalCostPerBody = fixedCostPerBody + materialTotalInclGst
 
   const hasOverride =
     product.finalCostOverride !== '' && product.finalCostOverride !== null && product.finalCostOverride !== undefined
   const finalCostPerBody = hasOverride ? num(product.finalCostOverride) : autoFinalCostPerBody
 
+  // L11 = J15 + J11 -> "GST Price"
+  const gstPriceDisplay = gstAmount + fixedCostPerBody
+  // M11 = J11 + I15 -> "Without GST Price"
+  const withoutGstPrice = fixedCostPerBody + materialAmountPerBody
+
+  // N11 = SellingPrice - K11
   const profitPerBody = sellingPrice > 0 ? sellingPrice - finalCostPerBody : 0
   const marginPercent = sellingPrice > 0 ? (profitPerBody / sellingPrice) * 100 : 0
 
   return {
     rawQtyGram,
     ratePerGram,
-    materialAmount,
+    materialAmountPerBody,
     gstAmount,
     materialTotalInclGst,
-    netMaterialKg,
-    theoreticalBodies,
-    actualGoodBodies,
-    bodiesForCosting,
-    totalMachineHours,
-    fixedCostPerMachineHour,
-    allocatedFixedCost,
-    materialCostPerBody,
     fixedCostPerBody,
     autoFinalCostPerBody,
     hasOverride,
     finalCostPerBody,
+    gstPriceDisplay,
+    withoutGstPrice,
     sellingPrice,
     profitPerBody,
     marginPercent,

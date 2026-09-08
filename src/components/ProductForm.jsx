@@ -12,16 +12,13 @@ export function blankProduct() {
     rawQtyKg: '',
     gstPercent: 18,
     bodyWeightGram: '',
-    wastagePercent: 0,
-    machinesRun: '',
-    runHoursPerMachine: '',
-    actualGoodBodies: '',
+    avgProduction: '',
     sellingPrice: '',
     finalCostOverride: '',
   }
 }
 
-export default function ProductForm({ initial, fixedCostPerMachineHour, onSave, onCancel }) {
+export default function ProductForm({ initial, fixedCostPerMachinePerDay, onSave, onCancel }) {
   const [product, setProduct] = useState(initial || blankProduct())
 
   useEffect(() => {
@@ -29,7 +26,7 @@ export default function ProductForm({ initial, fixedCostPerMachineHour, onSave, 
   }, [initial])
 
   const update = (key, val) => setProduct((p) => ({ ...p, [key]: val }))
-  const c = computeProduct(product, fixedCostPerMachineHour)
+  const c = computeProduct(product, fixedCostPerMachinePerDay)
 
   return (
     <div className="bg-navy-800/60 border border-gold-500/30 rounded-2xl p-5">
@@ -54,18 +51,15 @@ export default function ProductForm({ initial, fixedCostPerMachineHour, onSave, 
           />
         </label>
         <Field label="Date" type="date" value={product.date} onChange={(v) => update('date', v)} />
+        <Field label="Body Weight" suffix="gram" value={product.bodyWeightGram} onChange={(v) => update('bodyWeightGram', v)} />
         <Field label="Rate per KG" suffix="₹" value={product.ratePerKg} onChange={(v) => update('ratePerKg', v)} />
         <Field label="Raw Qty" suffix="KG" value={product.rawQtyKg} onChange={(v) => update('rawQtyKg', v)} />
-        <Field label="Body Weight" suffix="gram" value={product.bodyWeightGram} onChange={(v) => update('bodyWeightGram', v)} />
         <Field label="GST %" suffix="%" value={product.gstPercent} onChange={(v) => update('gstPercent', v)} />
-        <Field label="Wastage %" suffix="%" value={product.wastagePercent} onChange={(v) => update('wastagePercent', v)} />
-        <Field label="Machines Run" value={product.machinesRun} onChange={(v) => update('machinesRun', v)} />
-        <Field label="Run Hours / Machine" suffix="hrs" value={product.runHoursPerMachine} onChange={(v) => update('runHoursPerMachine', v)} />
         <Field
-          label="Actual Good Bodies"
-          value={product.actualGoodBodies}
-          placeholder={num2(c.theoreticalBodies, 0)}
-          onChange={(v) => update('actualGoodBodies', v)}
+          label="Avg Production"
+          suffix="bodies"
+          value={product.avgProduction}
+          onChange={(v) => update('avgProduction', v)}
         />
         <Field label="Selling Price / Body" suffix="₹" value={product.sellingPrice} onChange={(v) => update('sellingPrice', v)} />
       </div>
@@ -78,7 +72,7 @@ export default function ProductForm({ initial, fixedCostPerMachineHour, onSave, 
               Manual Override — Final Cost / Body (optional)
             </span>
             <p className="text-slate-500 text-xs mt-1">
-              Khali chhodo to automatic formula se calculate hoga (Material Cost/Body + Fixed Cost/Body). Yahan value daaloge to woh use hogi, formula bypass ho jayega.
+              Khali chhodo to automatic formula se calculate hoga (Fixed Cost/Body + Material Total incl. GST). Yahan value daaloge to woh use hogi, formula bypass ho jayega.
             </p>
           </div>
           <input
@@ -92,15 +86,22 @@ export default function ProductForm({ initial, fixedCostPerMachineHour, onSave, 
         </div>
       </div>
 
-      {/* Live preview */}
+      {/* Live preview — mirrors the sheet's Final Calculations block */}
       <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <MiniStat label="Material Total (incl GST)" value={currency(c.materialTotalInclGst)} />
-        <MiniStat label="Theoretical Bodies" value={num2(c.theoreticalBodies, 0)} />
-        <MiniStat label="Allocated Fixed Cost" value={currency(c.allocatedFixedCost)} />
+        <MiniStat label="Amount (Material, before GST)" value={currency(c.materialAmountPerBody)} />
+        <MiniStat label="Material Total incl. GST" value={currency(c.materialTotalInclGst)} />
+        <MiniStat label="Fixed Cost / Body" value={currency(c.fixedCostPerBody)} />
         <MiniStat
           label={c.hasOverride ? 'FINAL COST / BODY (manual)' : 'FINAL COST / BODY (auto)'}
           value={currency(c.finalCostPerBody)}
           highlight
+        />
+        <MiniStat label="GST Price" value={currency(c.gstPriceDisplay)} />
+        <MiniStat label="Without GST Price" value={currency(c.withoutGstPrice)} />
+        <MiniStat
+          label="Final Profit / Body"
+          value={product.sellingPrice ? currency(c.profitPerBody) : '—'}
+          highlight={product.sellingPrice ? true : false}
         />
       </div>
 

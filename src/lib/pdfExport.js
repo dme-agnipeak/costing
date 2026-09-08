@@ -1,12 +1,12 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { computeProduct, computeTotalFixedCost, computePlannedMachineHours, computeFixedCostPerMachineHour, currency, num2 } from './calculations'
+import { computeProduct, computeTotalFixedCost, computeFixedCostPerMachine, computeFixedCostPerMachinePerDay, currency, num2 } from './calculations'
 
 export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity, products }) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
 
-  const goldRGB = [47, 111, 237] // accent blue
+  const blueRGB = [47, 111, 237]
   const navyRGB = [15, 23, 42]
 
   // Header
@@ -17,7 +17,6 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
   doc.setFontSize(18)
   doc.text(companyInfo?.name || 'Vinayak AgniPeak LLP', 30, 30)
   doc.setFontSize(11)
-  doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'normal')
   doc.text(companyInfo?.subtitle || 'Product Body Costing — Final Report', 30, 48)
 
@@ -30,8 +29,8 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
   doc.setTextColor(...navyRGB)
 
   const totalFixed = computeTotalFixedCost(fixedCosts)
-  const plannedHours = computePlannedMachineHours(machineCapacity)
-  const fcph = computeFixedCostPerMachineHour(fixedCosts, machineCapacity)
+  const perMachine = computeFixedCostPerMachine(fixedCosts, machineCapacity)
+  const perMachinePerDay = computeFixedCostPerMachinePerDay(fixedCosts, machineCapacity)
 
   // Fixed cost summary table
   doc.setFontSize(12)
@@ -53,7 +52,7 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
       currency(totalFixed),
     ]],
     theme: 'grid',
-    headStyles: { fillColor: navyRGB, textColor: [255,255,255], fontSize: 8 },
+    headStyles: { fillColor: navyRGB, textColor: [255, 255, 255], fontSize: 8 },
     bodyStyles: { fontSize: 9, halign: 'right' },
     styles: { cellPadding: 5 },
   })
@@ -61,22 +60,21 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
   y = doc.lastAutoTable.finalY + 20
 
   doc.setFont('helvetica', 'bold')
-  doc.text('Machine Capacity & Fixed Cost Rate', 30, y)
+  doc.text('Machine Setup & Fixed Cost Allocation', 30, y)
   y += 8
 
   autoTable(doc, {
     startY: y,
     margin: { left: 30, right: 30 },
-    head: [['Working Days/Month', 'Avg Machines Running/Day', 'Avg Hours/Machine/Day', 'Planned Machine Hours', 'Fixed Cost / Machine Hour']],
+    head: [['Number of Machines', 'Working Days/Month', 'Fixed Cost / Machine (Monthly)', 'Fixed Cost / Machine / Day']],
     body: [[
+      machineCapacity.numberOfMachines,
       machineCapacity.workingDays,
-      machineCapacity.avgMachinesPerDay,
-      machineCapacity.avgHoursPerMachine,
-      num2(plannedHours, 0),
-      currency(fcph),
+      currency(perMachine),
+      currency(perMachinePerDay),
     ]],
     theme: 'grid',
-    headStyles: { fillColor: navyRGB, textColor: [255,255,255], fontSize: 8 },
+    headStyles: { fillColor: navyRGB, textColor: [255, 255, 255], fontSize: 8 },
     bodyStyles: { fontSize: 9, halign: 'right' },
     styles: { cellPadding: 5 },
   })
@@ -88,19 +86,18 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
   y += 8
 
   const rows = products.map((p) => {
-    const c = computeProduct(p, fcph)
+    const c = computeProduct(p, perMachinePerDay)
     return [
       p.name || '-',
+      num2(p.bodyWeightGram, 1),
       p.ratePerKg,
-      p.rawQtyKg,
-      p.bodyWeightGram,
       p.gstPercent + '%',
-      p.wastagePercent + '%',
+      num2(p.avgProduction, 0),
       num2(c.materialTotalInclGst),
-      num2(c.bodiesForCosting, 0),
-      num2(c.materialCostPerBody),
       num2(c.fixedCostPerBody),
       num2(c.finalCostPerBody),
+      num2(c.gstPriceDisplay),
+      num2(c.withoutGstPrice),
       p.sellingPrice ? num2(p.sellingPrice) : '-',
       p.sellingPrice ? num2(c.profitPerBody) : '-',
     ]
@@ -110,18 +107,18 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
     startY: y,
     margin: { left: 30, right: 30 },
     head: [[
-      'Product', 'Rate/KG', 'Raw Qty(KG)', 'Body Wt(g)', 'GST%', 'Wastage%',
-      'Material Total incl.GST', 'Good Bodies', 'Material Cost/Body', 'Fixed Cost/Body',
-      'FINAL COST/BODY', 'Selling Price', 'Profit/Body',
+      'Product', 'Body Wt(g)', 'Rate/KG', 'GST%', 'Avg Production',
+      'Material Total incl.GST', 'Fixed Cost/Body',
+      'FINAL COST/BODY', 'GST Price', 'Without GST Price', 'Selling Price', 'Profit/Body',
     ]],
     body: rows,
     theme: 'grid',
-    headStyles: { fillColor: navyRGB, textColor: [255,255,255], fontSize: 7 },
+    headStyles: { fillColor: navyRGB, textColor: [255, 255, 255], fontSize: 7 },
     bodyStyles: { fontSize: 8, halign: 'right' },
     columnStyles: { 0: { halign: 'left' } },
     styles: { cellPadding: 4 },
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 10) {
+      if (data.section === 'body' && data.column.index === 7) {
         data.cell.styles.fontStyle = 'bold'
         data.cell.styles.textColor = navyRGB
       }

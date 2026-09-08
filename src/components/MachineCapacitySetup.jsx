@@ -1,12 +1,12 @@
 import Field from './Field'
-import { currency, num2, computePlannedMachineHours, computeFixedCostPerMachineHour } from '../lib/calculations'
+import { currency, num2, computeFixedCostPerMachine, computeFixedCostPerMachinePerDay } from '../lib/calculations'
 import { Lock, Unlock } from 'lucide-react'
 import { useState } from 'react'
 
 export default function MachineCapacitySetup({ machineCapacity, setMachineCapacity, fixedCosts }) {
   const [locked, setLocked] = useState(true)
-  const plannedHours = computePlannedMachineHours(machineCapacity)
-  const fcph = computeFixedCostPerMachineHour(fixedCosts, machineCapacity)
+  const perMachine = computeFixedCostPerMachine(fixedCosts, machineCapacity)
+  const perMachinePerDay = computeFixedCostPerMachinePerDay(fixedCosts, machineCapacity)
 
   const update = (key, val) => setMachineCapacity({ ...machineCapacity, [key]: val })
 
@@ -14,9 +14,9 @@ export default function MachineCapacitySetup({ machineCapacity, setMachineCapaci
     <div className="bg-navy-800/40 border border-slate-800 rounded-2xl p-5">
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h2 className="text-slate-100 font-semibold">Machine Capacity Setup</h2>
+          <h2 className="text-slate-100 font-semibold">Machine Setup</h2>
           <p className="text-slate-500 text-xs mt-0.5">
-            Planning basis — fixed cost yahi se har machine hour par allocate hota hai.
+            Total Fixed Cost yahan se machines aur working days ke hisaab se baant kar per-machine-per-day rate banta hai.
           </p>
         </div>
         <button
@@ -32,37 +32,35 @@ export default function MachineCapacitySetup({ machineCapacity, setMachineCapaci
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+        <Field
+          label="Number of Machines"
+          value={machineCapacity.numberOfMachines}
+          disabled={locked}
+          onChange={(v) => update('numberOfMachines', v)}
+        />
         <Field
           label="Working Days in Month"
           value={machineCapacity.workingDays}
           disabled={locked}
           onChange={(v) => update('workingDays', v)}
         />
-        <Field
-          label="Avg Machines Running / Day"
-          value={machineCapacity.avgMachinesPerDay}
-          disabled={locked}
-          onChange={(v) => update('avgMachinesPerDay', v)}
-        />
-        <Field
-          label="Avg Running Hours / Machine / Day"
-          value={machineCapacity.avgHoursPerMachine}
-          disabled={locked}
-          onChange={(v) => update('avgHoursPerMachine', v)}
-        />
       </div>
 
       <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="flex items-center justify-between bg-navy-900 border border-slate-700 rounded-xl px-4 py-3.5">
-          <span className="text-slate-400 text-sm">Planned Monthly Machine Hours</span>
-          <span className="text-slate-100 font-semibold">{num2(plannedHours, 0)}</span>
+          <span className="text-slate-400 text-sm">Fixed Cost / Machine (Monthly)</span>
+          <span className="text-slate-100 font-semibold">{currency(perMachine)}</span>
         </div>
         <div className="flex items-center justify-between bg-navy-900 border border-gold-500/30 rounded-xl px-4 py-3.5">
-          <span className="text-slate-300 text-sm font-medium">Fixed Cost / Machine Hour</span>
-          <span className="text-gold-400 font-bold">{currency(fcph)}</span>
+          <span className="text-slate-300 text-sm font-medium">Fixed Cost / Machine / Day</span>
+          <span className="text-gold-400 font-bold">{currency(perMachinePerDay)}</span>
         </div>
       </div>
+
+      <p className="text-slate-500 text-xs mt-4">
+        Har product ke apna "Avg Production" number hoga (Products tab me) — usi se is machine/day fixed cost ko us product ke har body par baanta jaata hai.
+      </p>
     </div>
   )
 }
