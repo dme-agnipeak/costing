@@ -17,6 +17,7 @@ export function blankProduct() {
     runHoursPerMachine: '',
     actualGoodBodies: '',
     sellingPrice: '',
+    finalCostOverride: '',
   }
 }
 
@@ -69,18 +70,44 @@ export default function ProductForm({ initial, fixedCostPerMachineHour, onSave, 
         <Field label="Selling Price / Body" suffix="₹" value={product.sellingPrice} onChange={(v) => update('sellingPrice', v)} />
       </div>
 
+      {/* Manual override */}
+      <div className="mt-4 bg-yellow-500/5 border border-yellow-500/30 rounded-xl p-3.5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-[220px] flex-1">
+            <span className="text-xs font-medium text-yellow-400/90 uppercase tracking-wide">
+              Manual Override — Final Cost / Body (optional)
+            </span>
+            <p className="text-slate-500 text-xs mt-1">
+              Khali chhodo to automatic formula se calculate hoga (Material Cost/Body + Fixed Cost/Body). Yahan value daaloge to woh use hogi, formula bypass ho jayega.
+            </p>
+          </div>
+          <input
+            type="number"
+            step="any"
+            value={product.finalCostOverride}
+            onChange={(e) => update('finalCostOverride', e.target.value)}
+            placeholder={num2(c.autoFinalCostPerBody)}
+            className="w-40 rounded-lg bg-navy-800/70 border border-yellow-500/40 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-slate-100 text-sm px-3 py-2.5 outline-none"
+          />
+        </div>
+      </div>
+
       {/* Live preview */}
       <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <MiniStat label="Material Total (incl GST)" value={currency(c.materialTotalInclGst)} />
         <MiniStat label="Theoretical Bodies" value={num2(c.theoreticalBodies, 0)} />
         <MiniStat label="Allocated Fixed Cost" value={currency(c.allocatedFixedCost)} />
-        <MiniStat label="FINAL COST / BODY" value={currency(c.finalCostPerBody)} highlight />
+        <MiniStat
+          label={c.hasOverride ? 'FINAL COST / BODY (manual)' : 'FINAL COST / BODY (auto)'}
+          value={currency(c.finalCostPerBody)}
+          highlight
+        />
       </div>
 
       <div className="mt-5 flex gap-3">
         <button
           onClick={() => onSave(product)}
-          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-950 font-semibold text-sm px-4 py-2.5 rounded-lg transition"
+          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition"
         >
           <Save className="w-4 h-4" />
           Save Product

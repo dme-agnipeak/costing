@@ -6,13 +6,13 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
   const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
 
-  const goldRGB = [201, 162, 75]
+  const goldRGB = [47, 111, 237] // accent blue
   const navyRGB = [15, 23, 42]
 
   // Header
   doc.setFillColor(...navyRGB)
   doc.rect(0, 0, pageWidth, 70, 'F')
-  doc.setTextColor(...goldRGB)
+  doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
   doc.text(companyInfo?.name || 'Vinayak AgniPeak LLP', 30, 30)
@@ -53,7 +53,7 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
       currency(totalFixed),
     ]],
     theme: 'grid',
-    headStyles: { fillColor: navyRGB, textColor: goldRGB, fontSize: 8 },
+    headStyles: { fillColor: navyRGB, textColor: [255,255,255], fontSize: 8 },
     bodyStyles: { fontSize: 9, halign: 'right' },
     styles: { cellPadding: 5 },
   })
@@ -76,7 +76,7 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
       currency(fcph),
     ]],
     theme: 'grid',
-    headStyles: { fillColor: navyRGB, textColor: goldRGB, fontSize: 8 },
+    headStyles: { fillColor: navyRGB, textColor: [255,255,255], fontSize: 8 },
     bodyStyles: { fontSize: 9, halign: 'right' },
     styles: { cellPadding: 5 },
   })
@@ -116,7 +116,7 @@ export function exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity,
     ]],
     body: rows,
     theme: 'grid',
-    headStyles: { fillColor: navyRGB, textColor: goldRGB, fontSize: 7 },
+    headStyles: { fillColor: navyRGB, textColor: [255,255,255], fontSize: 7 },
     bodyStyles: { fontSize: 8, halign: 'right' },
     columnStyles: { 0: { halign: 'left' } },
     styles: { cellPadding: 4 },

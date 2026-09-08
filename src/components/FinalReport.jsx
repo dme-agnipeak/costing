@@ -30,7 +30,7 @@ export default function FinalReport({ companyInfo, fixedCosts, machineCapacity, 
         <button
           onClick={() => exportFinalReportPdf({ companyInfo, fixedCosts, machineCapacity, products })}
           disabled={!products.length}
-          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed text-navy-950 font-semibold text-sm px-4 py-2.5 rounded-lg transition shrink-0"
+          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition shrink-0"
         >
           <FileDown className="w-4 h-4" />
           Download PDF Report

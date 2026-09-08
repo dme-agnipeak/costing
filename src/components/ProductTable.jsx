@@ -39,7 +39,12 @@ export default function ProductTable({ products, fixedCostPerMachineHour, onEdit
                 <td className="px-3 py-3 text-right text-slate-300">{num2(c.bodiesForCosting, 0)}</td>
                 <td className="px-3 py-3 text-right text-slate-300">{currency(c.materialCostPerBody)}</td>
                 <td className="px-3 py-3 text-right text-slate-300">{currency(c.fixedCostPerBody)}</td>
-                <td className="px-3 py-3 text-right font-bold text-gold-400">{currency(c.finalCostPerBody)}</td>
+                <td className="px-3 py-3 text-right font-bold text-gold-400">
+                  {currency(c.finalCostPerBody)}
+                  {c.hasOverride && (
+                    <span className="ml-1.5 text-[9px] uppercase tracking-wide text-yellow-400/80 align-middle">manual</span>
+                  )}
+                </td>
                 <td className={`px-3 py-3 text-right font-medium ${c.profitPerBody >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {p.sellingPrice ? currency(c.profitPerBody) : '—'}
                 </td>

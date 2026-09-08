@@ -93,3 +93,15 @@ Profit / Body         = Selling Price - Final Cost/Body
 ```
 
 Agar aapki original Excel sheet ki koi specific formula isse thodi alag honi chahiye, batao — `src/lib/calculations.js` file me sirf ek jagah edit karke poori app update ho jayegi.
+
+## Manual Override (jab formula se hat kar khud number dena ho)
+
+Har product ke form me ek **yellow "Manual Override"** box hai — "Final Cost / Body". Khali chhodo to app automatic formula se calculate karega. Agar koi specific number khud dalna hai (jaise sheet me manually adjust karte the), to us box me type karo — app us value ko use karega aur "manual" tag dikhayega table me.
+
+## Original Excel sheet me mili gadbad (fix kar di gayi hai app me)
+
+Aapki bheji hui sheet check ki — usme 2 issues the:
+1. Pehle "Amount (₹)" column (I15) ki formula `Rate/Gram × Body Weight` thi, jo galti se bahut chhota number de rahi thi (₹0.72 for 1kg raw material @ ₹165/kg) — ye batch ka total material cost nahi, balki kisi aur cheez ka calculation tha.
+2. "Fixed Cost / Machine Hour" (R column) ki formula me `#REF!` error tha — broken reference.
+
+Is app me maine sheet ke **doosre, zyada complete section** (jisme Machine Hours, Wastage%, aur Theoretical/Actual Bodies included hain) ki logic use ki hai — jo sahi aur consistent hai: total batch material cost ÷ bodies produced = material cost per body. Isliye app ke numbers upar wali buggy Excel formula se match nahi karenge, lekin actual sahi costing yahi hai.

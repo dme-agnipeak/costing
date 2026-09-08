@@ -58,7 +58,11 @@ export function computeProduct(product, fixedCostPerMachineHour) {
   const materialCostPerBody = bodiesForCosting > 0 ? materialTotalInclGst / bodiesForCosting : 0
   const fixedCostPerBody = bodiesForCosting > 0 ? allocatedFixedCost / bodiesForCosting : 0
 
-  const finalCostPerBody = materialCostPerBody + fixedCostPerBody
+  const autoFinalCostPerBody = materialCostPerBody + fixedCostPerBody
+
+  const hasOverride =
+    product.finalCostOverride !== '' && product.finalCostOverride !== null && product.finalCostOverride !== undefined
+  const finalCostPerBody = hasOverride ? num(product.finalCostOverride) : autoFinalCostPerBody
 
   const profitPerBody = sellingPrice > 0 ? sellingPrice - finalCostPerBody : 0
   const marginPercent = sellingPrice > 0 ? (profitPerBody / sellingPrice) * 100 : 0
@@ -78,6 +82,8 @@ export function computeProduct(product, fixedCostPerMachineHour) {
     allocatedFixedCost,
     materialCostPerBody,
     fixedCostPerBody,
+    autoFinalCostPerBody,
+    hasOverride,
     finalCostPerBody,
     sellingPrice,
     profitPerBody,

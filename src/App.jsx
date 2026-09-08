@@ -77,7 +77,7 @@ export default function App() {
                     setEditingProduct(null)
                     setShowForm(true)
                   }}
-                  className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 text-navy-950 font-semibold text-sm px-3.5 py-2.5 rounded-lg transition shrink-0"
+                  className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 text-white font-semibold text-sm px-3.5 py-2.5 rounded-lg transition shrink-0"
                 >
                   <Plus className="w-4 h-4" />
                   Add Product
