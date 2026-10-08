@@ -1,136 +1,113 @@
-import { useState, useEffect } from 'react'
-import Field from './Field'
-import { computeProduct, currency, num2 } from '../lib/calculations'
-import { Save, X } from 'lucide-react'
+import { useState } from 'react'
+import { Save } from 'lucide-react'
+import { Field, Button, Modal, inputCls } from './ui'
+import { computeProduct, currency, num2, num } from '../lib/calculations'
+import { COSTING_TYPES } from '../lib/costingTypes'
+import { blankProduct } from '../lib/store'
 
-export function blankProduct() {
-  return {
-    id: crypto.randomUUID(),
-    date: new Date().toISOString().slice(0, 10),
-    name: '',
-    ratePerKg: '',
-    rawQtyKg: '',
-    gstPercent: 18,
-    bodyWeightGram: '',
-    avgProduction: '',
-    sellingPrice: '',
-    finalCostOverride: '',
+export default function ProductForm({ type, initial, perMachinePerDay, workingDays, onSave, onClose, existingNames = [] }) {
+  const T = COSTING_TYPES[type]
+  const L = T.labels
+  const [p, setP] = useState(() => ({ ...blankProduct(), ...(initial || {}) }))
+  const [errors, setErrors] = useState({})
+  const up = (k, v) => setP((x) => ({ ...x, [k]: v }))
+  const c = computeProduct(p, perMachinePerDay, workingDays)
+
+  const validate = () => {
+    const e = {}
+    if (!String(p.name || '').trim()) e.name = 'Please enter a product name.'
+    else if (existingNames.some((n) => n.toLowerCase() === p.name.trim().toLowerCase())) e.name = 'A product with this name already exists.'
+    if (!(num(p.bodyWeightGram) > 0)) e.bodyWeightGram = 'Enter a weight greater than 0.'
+    if (!(num(p.ratePerKg) > 0)) e.ratePerKg = 'Enter a rate greater than 0.'
+    if (!(num(p.avgProduction) > 0)) e.avgProduction = 'Enter production greater than 0.'
+    if (num(p.gstPercent) > 100) e.gstPercent = 'GST cannot exceed 100%.'
+    setErrors(e)
+    return !Object.keys(e).length
   }
-}
 
-export default function ProductForm({ initial, fixedCostPerMachinePerDay, onSave, onCancel }) {
-  const [product, setProduct] = useState(initial || blankProduct())
-
-  useEffect(() => {
-    setProduct(initial || blankProduct())
-  }, [initial])
-
-  const update = (key, val) => setProduct((p) => ({ ...p, [key]: val }))
-  const c = computeProduct(product, fixedCostPerMachinePerDay)
+  const save = () => {
+    if (!validate()) return
+    onSave({ ...p, name: p.name.trim() })
+  }
 
   return (
-    <div className="bg-navy-800/60 border border-gold-500/30 rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-slate-100 font-semibold">{initial ? 'Edit Product' : 'Add New Product / Body'}</h3>
-        {onCancel && (
-          <button onClick={onCancel} className="text-slate-500 hover:text-slate-200">
-            <X className="w-5 h-5" />
-          </button>
-        )}
+    <Modal
+      open
+      wide
+      onClose={onClose}
+      title={initial ? `Edit ${T.short} Product` : `Add ${T.short} Product`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button icon={Save} onClick={save}>
+            Save Product
+          </Button>
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <label className="flex flex-col gap-1.5 col-span-2">
+          <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">
+            {L.name} <span className="text-red-400">*</span>
+          </span>
+          <input type="text" value={p.name} onChange={(e) => up('name', e.target.value)} placeholder={L.namePlaceholder} className={`${inputCls} ${errors.name ? 'border-red-500/70' : ''}`} />
+          {errors.name && <span className="text-[11px] text-red-400">{errors.name}</span>}
+        </label>
+        <Field label="Costing Date" type="date" value={p.date} onChange={(v) => up('date', v)} className="col-span-2 sm:col-span-1" />
+        <Field label={L.bodyWeightGram} suffix="gram" required value={p.bodyWeightGram} onChange={(v) => up('bodyWeightGram', v)} error={errors.bodyWeightGram} />
+        <Field label={L.ratePerKg} prefix="₹" required value={p.ratePerKg} onChange={(v) => up('ratePerKg', v)} error={errors.ratePerKg} />
+        <Field label={L.rawQtyKg} suffix="KG" value={p.rawQtyKg} onChange={(v) => up('rawQtyKg', v)} hint={c.unitsFromRawQty ? `Enough for ~${num2(c.unitsFromRawQty, 0)} ${T.units}` : 'Stock reference'} />
+        <Field label={L.gstPercent} suffix="%" value={p.gstPercent} onChange={(v) => up('gstPercent', v)} error={errors.gstPercent} />
+        <Field label={L.avgProduction} suffix={T.units} required value={p.avgProduction} onChange={(v) => up('avgProduction', v)} error={errors.avgProduction} />
+        <Field label={L.sellingPrice} prefix="₹" value={p.sellingPrice} onChange={(v) => up('sellingPrice', v)} />
+        <Field label={L.additionalCost} prefix="₹" value={p.additionalCost} onChange={(v) => up('additionalCost', v)} hint={L.additionalHint} className="col-span-2 sm:col-span-3" />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <label className="flex flex-col gap-1.5 col-span-2 sm:col-span-1">
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Product / Body Name</span>
+      <div className="mt-4 bg-yellow-500/5 border border-yellow-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] font-medium text-yellow-400/90 uppercase tracking-wide">Manual Override — {L.finalCost} (optional)</div>
+          <p className="text-slate-500 text-xs mt-1">Leave blank to use the automatic formula. A value here replaces the calculated final cost for this product.</p>
+        </div>
+        <div className="relative sm:w-44">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">₹</span>
           <input
             type="text"
-            value={product.name}
-            onChange={(e) => update('name', e.target.value)}
-            placeholder="e.g. 63mm Body"
-            className="w-full rounded-lg bg-navy-800/70 border border-slate-700 focus:border-gold-500 focus:ring-1 focus:ring-gold-500 text-slate-100 text-sm px-3 py-2.5 outline-none"
-          />
-        </label>
-        <Field label="Date" type="date" value={product.date} onChange={(v) => update('date', v)} />
-        <Field label="Body Weight" suffix="gram" value={product.bodyWeightGram} onChange={(v) => update('bodyWeightGram', v)} />
-        <Field label="Rate per KG" suffix="₹" value={product.ratePerKg} onChange={(v) => update('ratePerKg', v)} />
-        <Field label="Raw Qty" suffix="KG" value={product.rawQtyKg} onChange={(v) => update('rawQtyKg', v)} />
-        <Field label="GST %" suffix="%" value={product.gstPercent} onChange={(v) => update('gstPercent', v)} />
-        <Field
-          label="Avg Production"
-          suffix="bodies"
-          value={product.avgProduction}
-          onChange={(v) => update('avgProduction', v)}
-        />
-        <Field label="Selling Price / Body" suffix="₹" value={product.sellingPrice} onChange={(v) => update('sellingPrice', v)} />
-      </div>
-
-      {/* Manual override */}
-      <div className="mt-4 bg-yellow-500/5 border border-yellow-500/30 rounded-xl p-3.5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-[220px] flex-1">
-            <span className="text-xs font-medium text-yellow-400/90 uppercase tracking-wide">
-              Manual Override — Final Cost / Body (optional)
-            </span>
-            <p className="text-slate-500 text-xs mt-1">
-              Khali chhodo to automatic formula se calculate hoga (Fixed Cost/Body + Material Total incl. GST). Yahan value daaloge to woh use hogi, formula bypass ho jayega.
-            </p>
-          </div>
-          <input
-            type="number"
-            step="any"
-            value={product.finalCostOverride}
-            onChange={(e) => update('finalCostOverride', e.target.value)}
+            inputMode="decimal"
+            value={p.finalCostOverride}
+            onChange={(e) => up('finalCostOverride', e.target.value.replace(/[^0-9.]/g, ''))}
             placeholder={num2(c.autoFinalCostPerBody)}
-            className="w-40 rounded-lg bg-navy-800/70 border border-yellow-500/40 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 text-slate-100 text-sm px-3 py-2.5 outline-none"
+            className={`${inputCls} pl-7 border-yellow-500/40`}
           />
         </div>
       </div>
 
-      {/* Live preview — mirrors the sheet's Final Calculations block */}
-      <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <MiniStat label="Amount (Material, before GST)" value={currency(c.materialAmountPerBody)} />
-        <MiniStat label="Material Total incl. GST" value={currency(c.materialTotalInclGst)} />
-        <MiniStat label="Fixed Cost / Body" value={currency(c.fixedCostPerBody)} />
-        <MiniStat
-          label={c.hasOverride ? 'FINAL COST / BODY (manual)' : 'FINAL COST / BODY (auto)'}
-          value={currency(c.finalCostPerBody)}
-          highlight
-        />
-        <MiniStat label="GST Price" value={currency(c.gstPriceDisplay)} />
-        <MiniStat label="Without GST Price" value={currency(c.withoutGstPrice)} />
-        <MiniStat
-          label="Final Profit / Body"
-          value={product.sellingPrice ? currency(c.profitPerBody) : '—'}
-          highlight={product.sellingPrice ? true : false}
-        />
-      </div>
+      <label className="flex flex-col gap-1.5 mt-4">
+        <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">Notes (optional)</span>
+        <textarea rows={2} value={p.notes || ''} onChange={(e) => up('notes', e.target.value)} className={inputCls} placeholder="Mould no., colour, customer, remarks…" />
+      </label>
 
-      <div className="mt-5 flex gap-3">
-        <button
-          onClick={() => onSave(product)}
-          className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition"
-        >
-          <Save className="w-4 h-4" />
-          Save Product
-        </button>
-        {onCancel && (
-          <button
-            onClick={onCancel}
-            className="text-sm px-4 py-2.5 rounded-lg border border-slate-700 text-slate-300 hover:text-slate-100 transition"
-          >
-            Cancel
-          </button>
-        )}
+      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <Mini label="Material (ex GST)" value={currency(c.materialAmountPerBody)} />
+        <Mini label="Material incl. GST" value={currency(c.materialTotalInclGst)} />
+        <Mini label={`Fixed Cost / ${L.perUnit}`} value={currency(c.fixedCostPerBody)} />
+        <Mini label={`${L.finalCost}${c.hasOverride ? ' (manual)' : ''}`} value={currency(c.finalCostPerBody)} hl />
+        <Mini label="GST Price" value={currency(c.gstPriceDisplay)} />
+        <Mini label="Without GST Price" value={currency(c.withoutGstPrice)} />
+        <Mini label={`Profit / ${L.perUnit}`} value={c.hasSellingPrice ? currency(c.profitPerBody) : '—'} tone={c.hasSellingPrice ? (c.profitPerBody >= 0 ? 'good' : 'bad') : ''} />
+        <Mini label="Margin" value={c.hasSellingPrice ? num2(c.marginPercent, 1) + '%' : '—'} tone={c.hasSellingPrice ? (c.marginPercent >= 0 ? 'good' : 'bad') : ''} />
       </div>
-    </div>
+    </Modal>
   )
 }
 
-function MiniStat({ label, value, highlight }) {
+function Mini({ label, value, hl, tone }) {
+  const cls = hl ? 'bg-gold-500/10 border-gold-500/40 text-gold-400' : tone === 'good' ? 'bg-navy-950 border-slate-700 text-emerald-400' : tone === 'bad' ? 'bg-navy-950 border-slate-700 text-red-400' : 'bg-navy-950 border-slate-700 text-slate-100'
   return (
-    <div className={`rounded-xl px-3 py-2.5 border ${highlight ? 'bg-gold-500/10 border-gold-500/40' : 'bg-navy-900 border-slate-700'}`}>
-      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`text-sm font-semibold mt-0.5 ${highlight ? 'text-gold-400' : 'text-slate-100'}`}>{value}</div>
+    <div className={`rounded-xl px-3 py-2 border ${cls}`}>
+      <div className="text-[10px] uppercase tracking-wide text-slate-500 leading-tight">{label}</div>
+      <div className="text-sm font-semibold mt-0.5">{value}</div>
     </div>
   )
 }

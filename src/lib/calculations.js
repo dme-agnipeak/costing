@@ -1,90 +1,98 @@
-// Core costing engine — mirrors the EXACT logic of the AgniPeak Excel costing sheet,
-// cell-by-cell, as confirmed against the original sheet:
+// AgniPeak costing engine.
 //
-//   FIXED COST SETUP:
-//     B11 = SUM(B5:B10)                    -> Total Monthly Fixed Cost
-//     D   = B / Number of Machines          -> "Machine Wise" fixed cost
-//     D11 = SUM(D5:D10) = B11 / Machines
-//     H11 = D11 / Working Days              -> Fixed cost / machine / day
+// Mirrors the original AgniPeak Excel costing sheet, cell by cell. The same engine
+// powers both the Moulding and the Welding modules (each module keeps its own
+// fixed costs, machine setup and product list).
 //
-//   PER PRODUCT ROW:
-//     F = E * 1000                          -> Raw Qty (Gram)
-//     G = D / F * E  (= D / 1000)           -> Rate / Gram
-//     I = G * C                             -> Amount (₹)  = material cost of ONE body (Body Weight × Rate/Gram)
-//     J = I * GST%                          -> GST Amount
-//     K = I + J                             -> Material Total incl. GST (₹) = material cost/body incl GST
+//   FIXED COST SETUP
+//     Total Monthly Fixed Cost      = Electricity + Rent + Operator Salary + Labour + Misc + Other
+//     Fixed Cost / Machine (Month)  = Total Monthly Fixed Cost / Number of Machines
+//     Fixed Cost / Machine / Day    = Fixed Cost / Machine (Month) / Working Days
 //
-//   FINAL CALCULATIONS (per product, using its own Avg Production):
-//     J11 = H11 / Avg Production            -> Fixed Cost / Body
-//     K11 = J11 + K15                       -> Cost Total Price  = FINAL COST / BODY
-//     L11 = J15 + J11                       -> GST Price
-//     M11 = J11 + I15                       -> Without GST Price
-//     N11 = SellingPrice(L15) - K11         -> Final Profit
+//   PER PRODUCT
+//     Rate / Gram          = Rate per KG / 1000
+//     Material Amount      = Rate / Gram x Weight per Unit (g)        (before GST)
+//     GST Amount           = Material Amount x GST %
+//     Material incl. GST   = Material Amount + GST Amount
+//     Fixed Cost / Unit    = Fixed Cost / Machine / Day / Avg Production per Machine per Day
+//     FINAL COST / UNIT    = Fixed Cost / Unit + Material incl. GST + Additional Cost / Unit
+//     GST Price            = GST Amount + Fixed Cost / Unit                (as in the sheet)
+//     Without GST Price    = Fixed Cost / Unit + Material Amount + Additional Cost / Unit
+//     Profit / Unit        = Selling Price - Final Cost / Unit
+//     Margin %             = Profit / Unit / Selling Price x 100
+//     Profit / Machine / Day   = Profit / Unit x Avg Production
+//     Profit / Machine / Month = Profit / Machine / Day x Working Days
+//
+// "Additional Cost / Unit" is optional (blank = 0), so results are identical to the
+// original sheet when it is not used.
 
-function num(v) {
-  const n = typeof v === 'number' ? v : parseFloat(v)
-  return isNaN(n) ? 0 : n
+export function num(v) {
+  if (v === null || v === undefined || v === '') return 0
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, ''))
+  return Number.isFinite(n) ? n : 0
 }
 
-export function computeTotalFixedCost(fixedCosts) {
-  const { electricity = 0, rent = 0, operatorSalary = 0, labour = 0, misc = 0, otherFixed = 0 } = fixedCosts
-  return num(electricity) + num(rent) + num(operatorSalary) + num(labour) + num(misc) + num(otherFixed)
+export const FIXED_COST_FIELDS = [
+  { key: 'electricity', label: 'Electricity Cost' },
+  { key: 'rent', label: 'Factory Rent' },
+  { key: 'operatorSalary', label: 'Operator Salary' },
+  { key: 'labour', label: 'Labour Cost' },
+  { key: 'misc', label: 'Miscellaneous (MSC)' },
+  { key: 'otherFixed', label: 'Other Fixed Cost' },
+]
+
+export function computeTotalFixedCost(fixedCosts = {}) {
+  return FIXED_COST_FIELDS.reduce((sum, f) => sum + num(fixedCosts[f.key]), 0)
 }
 
-// "Machine Wise" — total fixed cost divided across the number of machines
-export function computeFixedCostPerMachine(fixedCosts, machineSetup) {
-  const total = computeTotalFixedCost(fixedCosts)
-  const machines = num(machineSetup.numberOfMachines)
-  if (!machines) return 0
-  return total / machines
+export function computeFixedCostPerMachine(fixedCosts = {}, machine = {}) {
+  const machines = num(machine.numberOfMachines)
+  if (machines <= 0) return 0
+  return computeTotalFixedCost(fixedCosts) / machines
 }
 
-// Fixed cost per machine, per working day
-export function computeFixedCostPerMachinePerDay(fixedCosts, machineSetup) {
-  const perMachine = computeFixedCostPerMachine(fixedCosts, machineSetup)
-  const days = num(machineSetup.workingDays)
-  if (!days) return 0
-  return perMachine / days
+export function computeFixedCostPerMachinePerDay(fixedCosts = {}, machine = {}) {
+  const days = num(machine.workingDays)
+  if (days <= 0) return 0
+  return computeFixedCostPerMachine(fixedCosts, machine) / days
 }
 
-// Computes every derived field for a single product row — matches sheet columns exactly.
-export function computeProduct(product, fixedCostPerMachinePerDay) {
+export function hasValue(v) {
+  return v !== '' && v !== null && v !== undefined && Number.isFinite(parseFloat(v))
+}
+
+// Computes every derived figure for one product.
+export function computeProduct(product = {}, fixedCostPerMachinePerDay = 0, workingDays = 0) {
   const ratePerKg = num(product.ratePerKg)
   const rawQtyKg = num(product.rawQtyKg)
   const gstPercent = num(product.gstPercent)
-  const bodyWeightGram = num(product.bodyWeightGram)
+  const weightGram = num(product.bodyWeightGram)
   const sellingPrice = num(product.sellingPrice)
   const avgProduction = num(product.avgProduction)
+  const additionalCost = num(product.additionalCost)
 
   const rawQtyGram = rawQtyKg * 1000
-  // G = D / F * E  → algebraically simplifies to D/1000, computed literally for transparency
-  const ratePerGram = rawQtyGram > 0 ? (ratePerKg / rawQtyGram) * rawQtyKg : 0
-
-  // I = G * C  -> material cost of ONE body (before GST)
-  const materialAmountPerBody = ratePerGram * bodyWeightGram
-  // J = I * GST%
+  const ratePerGram = ratePerKg / 1000
+  const materialAmountPerBody = ratePerGram * weightGram
   const gstAmount = materialAmountPerBody * (gstPercent / 100)
-  // K = I + J -> material cost per body incl. GST
   const materialTotalInclGst = materialAmountPerBody + gstAmount
 
-  // J11 = H11 / Avg Production
-  const fixedCostPerBody = avgProduction > 0 ? fixedCostPerMachinePerDay / avgProduction : 0
+  const fixedCostPerBody = avgProduction > 0 ? num(fixedCostPerMachinePerDay) / avgProduction : 0
+  const autoFinalCostPerBody = fixedCostPerBody + materialTotalInclGst + additionalCost
 
-  // K11 = J11 + K15 -> auto FINAL COST / BODY
-  const autoFinalCostPerBody = fixedCostPerBody + materialTotalInclGst
-
-  const hasOverride =
-    product.finalCostOverride !== '' && product.finalCostOverride !== null && product.finalCostOverride !== undefined
+  const hasOverride = hasValue(product.finalCostOverride)
   const finalCostPerBody = hasOverride ? num(product.finalCostOverride) : autoFinalCostPerBody
 
-  // L11 = J15 + J11 -> "GST Price"
   const gstPriceDisplay = gstAmount + fixedCostPerBody
-  // M11 = J11 + I15 -> "Without GST Price"
-  const withoutGstPrice = fixedCostPerBody + materialAmountPerBody
+  const withoutGstPrice = fixedCostPerBody + materialAmountPerBody + additionalCost
 
-  // N11 = SellingPrice - K11
-  const profitPerBody = sellingPrice > 0 ? sellingPrice - finalCostPerBody : 0
-  const marginPercent = sellingPrice > 0 ? (profitPerBody / sellingPrice) * 100 : 0
+  const hasSellingPrice = sellingPrice > 0
+  const profitPerBody = hasSellingPrice ? sellingPrice - finalCostPerBody : 0
+  const marginPercent = hasSellingPrice ? (profitPerBody / sellingPrice) * 100 : 0
+  const profitPerMachinePerDay = hasSellingPrice ? profitPerBody * avgProduction : 0
+  const profitPerMachinePerMonth = profitPerMachinePerDay * num(workingDays)
+  // Raw material stock (Raw Qty) is enough for this many units
+  const unitsFromRawQty = weightGram > 0 && rawQtyGram > 0 ? Math.floor(rawQtyGram / weightGram) : 0
 
   return {
     rawQtyGram,
@@ -93,25 +101,54 @@ export function computeProduct(product, fixedCostPerMachinePerDay) {
     gstAmount,
     materialTotalInclGst,
     fixedCostPerBody,
+    additionalCost,
     autoFinalCostPerBody,
     hasOverride,
     finalCostPerBody,
     gstPriceDisplay,
     withoutGstPrice,
     sellingPrice,
+    hasSellingPrice,
     profitPerBody,
     marginPercent,
+    profitPerMachinePerDay,
+    profitPerMachinePerMonth,
+    unitsFromRawQty,
   }
 }
 
+// Full module summary used by screens, PDF, history and the AI assistant.
+export function computeModule(mod = {}) {
+  const fixedCosts = mod.fixedCosts || {}
+  const machine = mod.machine || {}
+  const totalFixed = computeTotalFixedCost(fixedCosts)
+  const perMachine = computeFixedCostPerMachine(fixedCosts, machine)
+  const perMachinePerDay = computeFixedCostPerMachinePerDay(fixedCosts, machine)
+  const workingDays = num(machine.workingDays)
+  const rows = (mod.products || []).map((p) => ({ product: p, calc: computeProduct(p, perMachinePerDay, workingDays) }))
+  const priced = rows.filter((r) => r.calc.hasSellingPrice)
+  const avgMargin = priced.length ? priced.reduce((s, r) => s + r.calc.marginPercent, 0) / priced.length : 0
+  const avgFinalCost = rows.length ? rows.reduce((s, r) => s + r.calc.finalCostPerBody, 0) / rows.length : 0
+  const lossMaking = priced.filter((r) => r.calc.profitPerBody < 0).length
+  return { totalFixed, perMachine, perMachinePerDay, workingDays, rows, avgMargin, avgFinalCost, pricedCount: priced.length, lossMaking }
+}
+
+export function round(n, d = 2) {
+  const f = 10 ** d
+  return Math.round(num(n) * f) / f
+}
+
 export function currency(n) {
+  return '₹' + num(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+// PDF-safe currency (standard PDF fonts cannot render the ₹ glyph)
+export function rs(n) {
   const v = num(n)
-  return '₹' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const s = Math.abs(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return (v < 0 ? '-Rs. ' : 'Rs. ') + s
 }
 
 export function num2(n, digits = 2) {
-  const v = num(n)
-  return v.toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  return num(n).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
-
-export { num }

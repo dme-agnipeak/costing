@@ -1,97 +1,97 @@
-# AgniPeak Costing App
+# AgniPeak Costing v3.0
 
-**Vinayak AgniPeak LLP** ke liye professional Product Body Costing web app — jo aapki Excel sheet ki calculation logic ko ek installable web/Android app me convert karta hai.
+Professional product costing app for **Vinayak AgniPeak LLP** — separate **Moulding** and **Welding** costing, a voice- and text-driven **AI Assistant** (Claude, ChatGPT or Gemini), professional **PDF reports** saved to **Google Drive**, full **history in Google Sheets** with re-check, and **secure login**. Installable on Android, iPhone and desktop (PWA).
 
-## App kya karta hai
+## Features
 
-- **Fixed Costs tab** — Electricity, Rent, Operator Salary, Labour, Misc, Other Fixed Cost — ek baar daalo, hamesha ke liye save ho jayega (browser me), jab chaho **Unlock** karke edit kar sakte ho.
-- **Machine Setup tab** — Number of Machines, Working Days — isse "Fixed Cost per Machine / Day" auto-calculate hota hai.
-- **Products tab** — Har product/body ke liye Body Weight, Rate/KG, Raw Qty, GST%, Avg Production, Selling Price daalo — app automatically Material Cost, Fixed Cost allocation, aur **Final Cost per Body** nikal deta hai — bilkul aapki Excel sheet ki formula chain jaisa. Jitne chaho utne products add/edit/delete kar sakte ho, har product ki apni Avg Production value ho sakti hai.
-- **Final Report tab** — Sab products ka summary + totals, aur **Download PDF Report** button — ek professional PDF report seedha phone/laptop me download ho jata hai.
-- **Installable App (PWA)** — Ye app "Add to Home Screen" se Android/iPhone/laptop me normal app jaisa install ho jata hai, apna icon milega, aur offline bhi chalega. (Play Store APK nahi hai — lekin use karne me bilkul native app jaisa hi lagega.)
-- Sara data aapke apne browser/phone me hi save hota hai (localStorage) — koi server database nahi hai.
+| Area | What it does |
+|---|---|
+| **Moulding Costing tab** | Products, Fixed Costs, Machine Setup and Report — the exact formula chain of the original Excel sheet. |
+| **Welding Costing tab** | Same columns and formulas with its own fixed costs, machines and products. |
+| **AI Assistant** | Type or speak (English / Hindi / Hinglish). Adds and updates products, changes fixed costs, runs what-if calculations, creates standard and custom PDFs, searches and re-checks history, and explains how to use the app. Every number comes from the app's own costing engine. |
+| **Voice** | Microphone input, spoken replies, hands-free conversation mode and a floating mic button on every screen. |
+| **PDF reports** | Module report (all or selected products), single-product costing sheet with step-by-step calculation, and AI-built custom reports. Page numbers, signature block, company details. |
+| **Google Drive & Sheets** | PDFs saved in the Drive folder; every report logged in the Sheet (Reports + History tabs); costing data synced between devices. |
+| **History & re-check** | Search and filter all reports, open the Drive PDF, regenerate the PDF, re-check every figure against a fresh calculation, compare with today's cost, restore to the calculator. |
+| **Login** | Username + password for every user, admin/user roles, forced password change, lockout after 5 failed attempts, 30-day or 12-hour sessions. |
+| **Settings** | Company details, Google Drive connection, AI providers & keys (one-time; admin can push to all devices), voice, account & users, backup/import. |
+| **How to Use** | Built-in guide plus "Ask the AI" for any feature question. |
+| **Mobile** | Bottom navigation, card layout for products, large touch targets, safe-area support, no zoom on input focus. |
 
-## Local me chalane ke liye
+## Quick start
 
 ```bash
 npm install
-npm run dev
+npm run dev        # http://localhost:5173
+npm test           # verifies the costing formulas
+npm run build      # production build in dist/
 ```
 
-Browser me `http://localhost:5173` khol lo.
+## First-time setup
 
-Production build banane ke liye:
+1. **Google Drive & Sheet** — follow [`google-apps-script/SETUP.md`](google-apps-script/SETUP.md) (about 5 minutes). Folder ID and Spreadsheet ID are already configured in `Code.gs`.
+2. **Deploy** to Vercel (below) and set `VITE_APPS_SCRIPT_URL` so every device connects automatically.
+3. **Sign in** with `admin / Admin@123`, set a new password, add users in Settings → Account.
+4. **AI** — Settings → AI Assistant → choose Claude, ChatGPT or Gemini → paste the API key → **Test** → (admin) **Save AI setup for all devices**.
+   - Claude: console.anthropic.com → API Keys
+   - ChatGPT: platform.openai.com → API keys
+   - Gemini: aistudio.google.com → Get API key
+5. **Voice** — Settings → Voice: choose *English (India)* for mixed Hindi/English speech. Allow microphone access when the browser asks.
 
-```bash
-npm run build
-npm run preview
-```
+Without the Google connection, the app still works on one device: the first launch asks you to create a local administrator account, and reports are kept in on-device History.
 
-## GitHub par upload karna
+## Deploy on Vercel
 
-```bash
-git init
-git add .
-git commit -m "AgniPeak Costing App"
-git branch -M main
-git remote add origin https://github.com/<your-username>/agnipeak-costing.git
-git push -u origin main
-```
+1. Push this folder to a GitHub repository.
+2. vercel.com → **New Project** → import the repository (framework **Vite**, build `npm run build`, output `dist` — already in `vercel.json`).
+3. **Settings → Environment Variables** → `VITE_APPS_SCRIPT_URL` = your Apps Script `/exec` URL → **Redeploy**.
 
-(GitHub par pehle ek naya empty repository bana lo, phir upar wali command me apna username/repo-name daal do.)
+## Install on a phone
 
-## Vercel par deploy karna
+- **Android (Chrome):** open the link → menu ⋮ → **Install app**.
+- **iPhone (Safari):** Share → **Add to Home Screen**.
 
-1. [vercel.com](https://vercel.com) par GitHub account se login karo.
-2. **New Project** → apna `agnipeak-costing` GitHub repo select karo.
-3. Framework auto-detect ho jayega (**Vite**) — Build Command: `npm run build`, Output Directory: `dist` (already `vercel.json` me set hai).
-4. **Deploy** dabao — 1-2 minute me live URL mil jayega (e.g. `agnipeak-costing.vercel.app`).
-5. Jab bhi GitHub par naya code push karoge, Vercel automatically re-deploy kar dega.
-
-## Phone me "Android App" ki tarah install karna
-
-1. Vercel wala live link Chrome (Android) me kholo.
-2. Chrome menu (⋮) me **"Add to Home Screen"** / **"Install App"** option dikhega — tap karo.
-3. App ka icon home screen par aa jayega, aur usse open karne par full-screen native-app jaisa experience milega — bina browser address bar ke.
-4. iPhone par Safari me **Share → Add to Home Screen** se same tarike se install hota hai.
-5. Laptop/desktop (Chrome/Edge) par address bar me install icon (⊕) dikhta hai, usse bhi ek click me install ho jata hai.
-
-## Structure
+## Costing formula
 
 ```
-src/
-  components/     -> UI components (forms, tables, tabs)
-  lib/
-    calculations.js -> saari costing formulas (Excel logic ka JS version)
-    storage.js       -> localStorage me data save/load
-    pdfExport.js      -> Final PDF report generate karta hai
-  App.jsx           -> main app + tabs
-public/             -> PWA icons, manifest assets
+Total Monthly Fixed Cost     = Electricity + Rent + Operator Salary + Labour + Misc + Other
+Fixed Cost / Machine / Day   = Total Monthly Fixed Cost / Machines / Working Days
+Fixed Cost / Unit            = Fixed Cost / Machine / Day / Avg Production per Machine per Day
+Material Cost (ex GST)       = Rate per KG / 1000 x Weight per Unit (g)
+GST Amount                   = Material Cost x GST %
+FINAL COST / UNIT            = Fixed Cost / Unit + Material incl. GST + Additional Cost / Unit (optional)
+GST Price                    = GST Amount + Fixed Cost / Unit          (sheet metric)
+Without GST Price            = Fixed Cost / Unit + Material (ex GST) + Additional Cost
+Profit / Unit                = Selling Price - Final Cost / Unit
+Margin %                     = Profit / Selling Price x 100
+Profit / Machine / Month     = Profit / Unit x Avg Production x Working Days
 ```
 
-## Costing formula (exact match to your Google Sheet)
+A **Manual Override** replaces the automatic final cost for one product; it is labelled "Manual" on screen and marked `*` in PDFs.
+
+## Security notes
+
+- Passwords are stored only as salted hashes (Google Sheet and device). Session tokens are HMAC-signed and are invalidated when a password changes or a user is disabled.
+- AI API keys are stored on the device and sent only to the chosen AI provider. If an admin saves them for all devices, they are kept in the private Script Properties of your Apps Script project and delivered only to signed-in users.
+- The Apps Script runs as the folder owner; only signed-in users can read or write data through it.
+
+## Project structure
 
 ```
-Total Fixed Cost      = Electricity + Rent + Operator Salary + Labour + Misc + Other
-Machine-Wise Fixed    = Total Fixed Cost / No. of Machines
-Per-Day (per machine) = Machine-Wise Fixed / Working Days
-Fixed Cost / Unit     = Per-Day (per machine) / Avg Production (units/machine/day)
-
-Rate / Gram        = Rate per KG / 1000
-Amount (Rs)        = Rate/Gram x Body Weight (gram)      -> material cost of ONE body
-GST Amount (Rs)    = Amount x GST%
-Material Total     = Amount + GST Amount
-
-COST TOTAL PRICE   = Fixed Cost/Unit + Material Total     <- FINAL COST PER BODY
-GST Price          = GST Amount + Fixed Cost/Unit
-Without GST Price  = Fixed Cost/Unit + Amount
-Final Profit       = Selling Price - Cost Total Price
+google-apps-script/   Code.gs (Drive/Sheets backend) + SETUP.md
+scripts/              verify-calculations.mjs (npm test)
+src/lib/
+  calculations.js     costing engine (shared by screens, PDFs, history and AI)
+  costingTypes.js     Moulding / Welding labels
+  store.js            app state, settings, migration from v2 data
+  auth.js             sign-in (cloud + device), password hashing
+  cloud.js            Apps Script client, data sync
+  reports.js          PDF → Drive → Sheet → History pipeline, re-check
+  pdf.js              PDF layouts
+  voice.js            speech recognition, transcription fallback, speech output
+  guide.js            How to Use content (also given to the AI)
+  ai/                 providers (Claude / OpenAI / Gemini), tools, agent loop
+src/components/       screens and UI
 ```
 
-No. of Machines, Working Days, aur Avg Production — teeno **Machine Setup tab** me editable hain (pehle sheet me ye 6 aur 26 hardcoded the, ab app me kabhi bhi change kar sakte ho).
-
-"Raw Qty (KG)" field sirf reference/record ke liye hai — jaisa original sheet me hai, ye final cost calculation me directly use nahi hota (Rate/Gram hamesha Rate-per-KG/1000 hi rehta hai).
-
-## Manual Override (jab formula se hat kar khud number dena ho)
-
-Har product ke form me ek **yellow "Manual Override — Final Cost / Body"** box hai. Khali chhodo to app automatic formula se calculate karega (upar wale formula se). Agar koi specific number khud dalna hai, to us box me type karo — app us value ko use karega aur "manual" tag dikhayega table me. Isse kisi bhi product ki final calculation ko chaho to override kar sakte ho.
+Existing v2 data (fixed costs, machines, products) is migrated automatically into the Moulding tab on first launch.
